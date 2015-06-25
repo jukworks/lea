@@ -7,6 +7,7 @@ const (
 	DECRYPT_MODE
 )
 
+// LEA uses a 128-bit block
 type word uint32
 
 func (w word) String() string {
@@ -37,9 +38,6 @@ func ror(w word, r uint) word {
 }
 
 func RoundKey(K []byte, mode int) (RK [][6]word) {
-	if mode != ENCRYPT_MODE && mode != DECRYPT_MODE {
-		panic("Mode is invalid")
-	}
 	delta := [8]word{0xc3efe9db, 0x44626b02, 0x79e27c8a, 0x78df30ec, 0x715ea49e, 0xc785da0a, 0xe04ef22a, 0xe5c40957}
 	var Nr uint
 	switch len(K) {
@@ -49,8 +47,6 @@ func RoundKey(K []byte, mode int) (RK [][6]word) {
 		Nr = 28
 	case 32:
 		Nr = 32
-	default:
-		panic("|Key| should 128, 192, or 256 bits.")
 	}
 	T := make([]word, len(K)/4)
 	RK = make([][6]word, Nr)
@@ -125,8 +121,6 @@ func encdec(from [16]byte, RK [][6]word, mode int) (to [16]byte) {
 			X = EncRound(X, RK[i])
 		case DECRYPT_MODE:
 			X = DecRound(X, RK[i])
-		default:
-			panic("Invalid mode.")
 		}
 	}
 	for i := 0; i < 4; i++ {

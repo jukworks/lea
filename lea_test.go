@@ -1,6 +1,9 @@
 package lea
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 func TestBa2w(t *testing.T) {
 	w := ba2w([4]byte{0x0f, 0x1e, 0x2d, 0x3c})
@@ -13,6 +16,14 @@ func TestW2ba(t *testing.T) {
 	ba := w2ba(0x3c2d1e0f)
 	if ba[0] != 0x0f || ba[1] != 0x1e || ba[2] != 0x2d || ba[3] != 0x3c {
 		t.Errorf("Should be {0x0f, 0x1e, 0x2d, 0x3c}. Your answer was %v.", ba)
+	}
+}
+
+func TestWordPrint(t *testing.T) {
+	var w word = 0x12345678
+	s := fmt.Sprintf("%v", w)
+	if s != "12345678" {
+		t.Errorf("Stringify a word %v fails (your answer: %v)", w, s)
 	}
 }
 
