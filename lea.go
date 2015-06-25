@@ -14,6 +14,7 @@ func (w word) String() string {
 	return fmt.Sprintf("%08x", uint32(w))
 }
 
+// converts a byte array [B1 B2 B3 B4] to a word B4B3B2B1
 func ba2w(ba [4]byte) word {
 	return word(uint32(ba[3])<<24 |
 		uint32(ba[2])<<16 |
@@ -21,6 +22,7 @@ func ba2w(ba [4]byte) word {
 		uint32(ba[0]))
 }
 
+// converts a word B1B2B3B4 to a byte array [B4 B3 B2 B1]
 func w2ba(w word) (ba [4]byte) {
 	ba[0] = byte(w)
 	ba[1] = byte(w >> 8)
@@ -29,14 +31,23 @@ func w2ba(w word) (ba [4]byte) {
 	return
 }
 
+// 2 circular shift functions below
+// [be careful] # of shift could be larger than 32
+
+// circular left shift
 func rol(w word, r uint) word {
 	return (w << (r % 32)) | (w >> (32 - (r % 32)))
 }
 
+// circular right shift
 func ror(w word, r uint) word {
 	return (w >> (r % 32)) | (w << (32 - (r % 32)))
 }
 
+// returns round keys for encryption or decryption
+// param K is a key (128-bit, 192-bit, or 256-bit)
+// # of rows of return value (RK) will be different by the given key size
+// mode: ENCRYPT_MODE or DECRYPT_MODE
 func RoundKey(K []byte, mode int) (RK [][6]word) {
 	delta := [8]word{0xc3efe9db, 0x44626b02, 0x79e27c8a, 0x78df30ec, 0x715ea49e, 0xc785da0a, 0xe04ef22a, 0xe5c40957}
 	var Nr uint
@@ -57,6 +68,8 @@ func RoundKey(K []byte, mode int) (RK [][6]word) {
 	}
 	for i := uint(0); i < Nr; i++ {
 		var rki uint
+		// procedures for generating round keys for encryption and decryption are the same
+		// when decrypting mode, save them in reverse
 		switch mode {
 		case ENCRYPT_MODE:
 			rki = i
@@ -91,6 +104,7 @@ func RoundKey(K []byte, mode int) (RK [][6]word) {
 	return
 }
 
+// one round for encryption
 func EncRound(x [4]word, rk [6]word) (t [4]word) {
 	t[0] = rol((x[0]^rk[0])+(x[1]^rk[1]), 9)
 	t[1] = ror((x[1]^rk[2])+(x[2]^rk[3]), 5)
@@ -99,6 +113,7 @@ func EncRound(x [4]word, rk [6]word) (t [4]word) {
 	return
 }
 
+// one round for decryption
 func DecRound(x [4]word, rk [6]word) (t [4]word) {
 	t[0] = x[3]
 	t[1] = (ror(x[0], 9) - (t[0] ^ rk[0])) ^ rk[1]
@@ -107,6 +122,11 @@ func DecRound(x [4]word, rk [6]word) (t [4]word) {
 	return
 }
 
+// helper function for encryption and decryption
+// LEA uses 4 words (4 bytes * 4 = 16 bytes = 128 bits) for encryption or decryption
+// 1. breaks the given 16 bytes into 4 words
+// 2. encrypts or decrypts them
+// 3. reconstructs 4 words to 16 bytes
 func encdec(from [16]byte, RK [][6]word, mode int) (to [16]byte) {
 	var X [4]word
 	for i := 0; i < 4; i++ {
