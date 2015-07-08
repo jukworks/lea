@@ -1,5 +1,5 @@
 # lea
 Go library for LEA block encryption algorithm.
 
-* Todo
+#### Todo
 - Encryption modes
