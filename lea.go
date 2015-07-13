@@ -2,28 +2,30 @@ package lea
 
 import "fmt"
 
+// These constants represent Encryption mode and Decryption mode.
 const (
-	ENCRYPT_MODE = iota
-	DECRYPT_MODE
+	EncryptMode = iota
+	DecryptMode
 )
 
-// LEA uses a 128-bit block
-type word uint32
+// Word represents 'unsigned 32-bit integer'.
+// LEA uses a 128-bit block.
+type Word uint32
 
-func (w word) String() string {
+func (w Word) String() string {
 	return fmt.Sprintf("%08x", uint32(w))
 }
 
 // converts a byte array [B1 B2 B3 B4] to a word B4B3B2B1
-func ba2w(ba [4]byte) word {
-	return word(uint32(ba[3])<<24 |
+func ba2w(ba [4]byte) Word {
+	return Word(uint32(ba[3])<<24 |
 		uint32(ba[2])<<16 |
 		uint32(ba[1])<<8 |
 		uint32(ba[0]))
 }
 
 // converts a word B1B2B3B4 to a byte array [B4 B3 B2 B1]
-func w2ba(w word) (ba [4]byte) {
+func w2ba(w Word) (ba [4]byte) {
 	ba[0] = byte(w)
 	ba[1] = byte(w >> 8)
 	ba[2] = byte(w >> 16)
@@ -35,21 +37,21 @@ func w2ba(w word) (ba [4]byte) {
 // [be careful] # of shift could be larger than 32
 
 // circular left shift
-func rol(w word, r uint) word {
+func rol(w Word, r uint) Word {
 	return (w << (r % 32)) | (w >> (32 - (r % 32)))
 }
 
 // circular right shift
-func ror(w word, r uint) word {
+func ror(w Word, r uint) Word {
 	return (w >> (r % 32)) | (w << (32 - (r % 32)))
 }
 
-// returns round keys for encryption or decryption
+// RoundKey returns round keys for encryption or decryption
 // param K is a key (128-bit, 192-bit, or 256-bit)
 // # of rows of return value (RK) will be different by the given key size
 // mode: ENCRYPT_MODE or DECRYPT_MODE
-func RoundKey(K []byte, mode int) (RK [][6]word) {
-	delta := [8]word{0xc3efe9db, 0x44626b02, 0x79e27c8a, 0x78df30ec, 0x715ea49e, 0xc785da0a, 0xe04ef22a, 0xe5c40957}
+func RoundKey(K []byte, mode int) (RK [][6]Word) {
+	delta := [8]Word{0xc3efe9db, 0x44626b02, 0x79e27c8a, 0x78df30ec, 0x715ea49e, 0xc785da0a, 0xe04ef22a, 0xe5c40957}
 	var Nr uint
 	switch len(K) {
 	case 16:
@@ -59,8 +61,8 @@ func RoundKey(K []byte, mode int) (RK [][6]word) {
 	case 32:
 		Nr = 32
 	}
-	T := make([]word, len(K)/4)
-	RK = make([][6]word, Nr)
+	T := make([]Word, len(K)/4)
+	RK = make([][6]Word, Nr)
 	for i := 0; i < len(K)/4; i++ {
 		var buf [4]byte
 		copy(buf[:], K[i*4:(i+1)*4])
@@ -71,9 +73,9 @@ func RoundKey(K []byte, mode int) (RK [][6]word) {
 		// procedures for generating round keys for encryption and decryption are the same
 		// when decrypting mode, save them in reverse
 		switch mode {
-		case ENCRYPT_MODE:
+		case EncryptMode:
 			rki = i
-		case DECRYPT_MODE:
+		case DecryptMode:
 			rki = Nr - i - 1
 		}
 		switch len(K) {
@@ -82,7 +84,7 @@ func RoundKey(K []byte, mode int) (RK [][6]word) {
 			T[1] = rol(T[1]+rol(delta[i%4], i+1), 3)
 			T[2] = rol(T[2]+rol(delta[i%4], i+2), 6)
 			T[3] = rol(T[3]+rol(delta[i%4], i+3), 11)
-			RK[rki] = [6]word{T[0], T[1], T[2], T[1], T[3], T[1]}
+			RK[rki] = [6]Word{T[0], T[1], T[2], T[1], T[3], T[1]}
 		case 24:
 			T[0] = rol(T[0]+rol(delta[i%6], i), 1)
 			T[1] = rol(T[1]+rol(delta[i%6], i+1), 3)
@@ -90,7 +92,7 @@ func RoundKey(K []byte, mode int) (RK [][6]word) {
 			T[3] = rol(T[3]+rol(delta[i%6], i+3), 11)
 			T[4] = rol(T[4]+rol(delta[i%6], i+4), 13)
 			T[5] = rol(T[5]+rol(delta[i%6], i+5), 17)
-			RK[rki] = [6]word{T[0], T[1], T[2], T[3], T[4], T[5]}
+			RK[rki] = [6]Word{T[0], T[1], T[2], T[3], T[4], T[5]}
 		case 32:
 			T[(6*i)%8] = rol(T[(6*i)%8]+rol(delta[i%8], i), 1)
 			T[(6*i+1)%8] = rol(T[(6*i+1)%8]+rol(delta[i%8], i+1), 3)
@@ -98,14 +100,14 @@ func RoundKey(K []byte, mode int) (RK [][6]word) {
 			T[(6*i+3)%8] = rol(T[(6*i+3)%8]+rol(delta[i%8], i+3), 11)
 			T[(6*i+4)%8] = rol(T[(6*i+4)%8]+rol(delta[i%8], i+4), 13)
 			T[(6*i+5)%8] = rol(T[(6*i+5)%8]+rol(delta[i%8], i+5), 17)
-			RK[rki] = [6]word{T[(6*i)%8], T[(6*i+1)%8], T[(6*i+2)%8], T[(6*i+3)%8], T[(6*i+4)%8], T[(6*i+5)%8]}
+			RK[rki] = [6]Word{T[(6*i)%8], T[(6*i+1)%8], T[(6*i+2)%8], T[(6*i+3)%8], T[(6*i+4)%8], T[(6*i+5)%8]}
 		}
 	}
 	return
 }
 
-// one round for encryption
-func EncRound(x [4]word, rk [6]word) (t [4]word) {
+// EncRound is one round for encryption
+func EncRound(x [4]Word, rk [6]Word) (t [4]Word) {
 	t[0] = rol((x[0]^rk[0])+(x[1]^rk[1]), 9)
 	t[1] = ror((x[1]^rk[2])+(x[2]^rk[3]), 5)
 	t[2] = ror((x[2]^rk[4])+(x[3]^rk[5]), 3)
@@ -113,8 +115,8 @@ func EncRound(x [4]word, rk [6]word) (t [4]word) {
 	return
 }
 
-// one round for decryption
-func DecRound(x [4]word, rk [6]word) (t [4]word) {
+// DecRound is one round for decryption
+func DecRound(x [4]Word, rk [6]Word) (t [4]Word) {
 	t[0] = x[3]
 	t[1] = (ror(x[0], 9) - (t[0] ^ rk[0])) ^ rk[1]
 	t[2] = (rol(x[1], 5) - (t[1] ^ rk[2])) ^ rk[3]
@@ -127,8 +129,8 @@ func DecRound(x [4]word, rk [6]word) (t [4]word) {
 // 1. breaks the given 16 bytes into 4 words
 // 2. encrypts or decrypts them
 // 3. reconstructs 4 words to 16 bytes
-func encdec(from [16]byte, RK [][6]word, mode int) (to [16]byte) {
-	var X [4]word
+func encdec(from [16]byte, RK [][6]Word, mode int) (to [16]byte) {
+	var X [4]Word
 	for i := 0; i < 4; i++ {
 		var buf [4]byte
 		copy(buf[:], from[i*4:(i+1)*4])
@@ -137,9 +139,9 @@ func encdec(from [16]byte, RK [][6]word, mode int) (to [16]byte) {
 	Nr := len(RK)
 	for i := 0; i < Nr; i++ {
 		switch mode {
-		case ENCRYPT_MODE:
+		case EncryptMode:
 			X = EncRound(X, RK[i])
-		case DECRYPT_MODE:
+		case DecryptMode:
 			X = DecRound(X, RK[i])
 		}
 	}
@@ -150,10 +152,14 @@ func encdec(from [16]byte, RK [][6]word, mode int) (to [16]byte) {
 	return
 }
 
-func Encrypt(P [16]byte, RK [][6]word) [16]byte {
-	return encdec(P, RK, ENCRYPT_MODE)
+// Encrypt encrypts one block (16 bytes = 128 bits)
+// P: plaintext, RK: round keys
+func Encrypt(P [16]byte, RK [][6]Word) [16]byte {
+	return encdec(P, RK, EncryptMode)
 }
 
-func Decrypt(C [16]byte, RK [][6]word) [16]byte {
-	return encdec(C, RK, DECRYPT_MODE)
+// Decrypt decrypts one block (16 bytes = 128 bits)
+// P: plaintext, RK: round keys
+func Decrypt(C [16]byte, RK [][6]Word) [16]byte {
+	return encdec(C, RK, DecryptMode)
 }
